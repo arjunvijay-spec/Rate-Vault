@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - RateVault</title>
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body { padding: 0; margin: 0; display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: #1A1F35; padding: 2rem 0; position: fixed; height: 100vh; overflow-y: auto; }
+        .logo { padding: 0 2rem 2rem; font-size: 1.5rem; font-weight: 700; color: #00C853; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+        .nav-item { padding: 0.875rem 2rem; display: flex; align-items: center; gap: 1rem; color: #CBD5E0; text-decoration: none; transition: all 0.3s; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background: rgba(0, 200, 83, 0.1); color: #00C853; border-left: 3px solid #00C853; }
+        .main-content { margin-left: 260px; flex: 1; padding: 2rem; background: #0A0E1A; }
+        .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); padding: 2rem; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 2rem; }
+        .card-title { font-size: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .chart-container { position: relative; height: 400px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        .top-pair { background: rgba(255, 255, 255, 0.03); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+        .pair-name { font-weight: 600; color: #00C853; }
+        .pair-count { color: #CBD5E0; font-size: 0.875rem; }
+        @media (max-width: 1024px) {
+            .sidebar { width: 0; transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body class="loaded">
+    <div class="sidebar">
+        <div class="logo" onclick="window.location.href='dashboard.html'">
+            <i class="fas fa-vault"></i>
+            RateVault
+        </div>
+        <nav>
+            <a class="nav-item" onclick="window.location.href='dashboard.html'">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item" onclick="window.location.href='converter.html'">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Converter</span>
+            </a>
+            <a class="nav-item active">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </a>
+            <a class="nav-item" onclick="window.location.href='history.html'">
+                <i class="fas fa-history"></i>
+                <span>History</span>
+            </a>
+        </nav>
+        <div style="position: absolute; bottom: 2rem; width: 100%; padding: 0 2rem;">
+            <button class="btn btn-secondary" onclick="handleLogout()" style="width: 100%;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1 style="margin-bottom: 2rem;">Analytics Dashboard</h1>
+
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-chart-line"></i>
+                Conversion Trend (Last 7 Days)
+            </h2>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-trophy"></i>
+                    Top Currency Pairs
+                </h2>
+                <div id="topPairs"></div>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Conversion Distribution
+                </h2>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-calendar-alt"></i>
+                Activity by Day of Week
+            </h2>
+            <div class="chart-container">
+                <canvas id="dayChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!Session.isAuthenticated()) {
+            window.location.href = '../index.html';
+        }
+        
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                Session.logout();
+            }
+        }
+        
+        let trendChart, pieChart, dayChart;
+        
+        function initCharts() {
+            const history = conversionHistory.getUserHistory();
+            
+            if (history.length === 0) {
+                document.querySelector('.main-content').innerHTML = `
+                    <h1 style="margin-bottom: 2rem;">Analytics Dashboard</h1>
+                    <div class="card" style="text-align: center; padding: 4rem;">
+                        <i class="fas fa-chart-line" style="font-size: 4rem; color: #00C853; opacity: 0.3; margin-bottom: 1rem;"></i>
+                        <h3>No data available</h3>
+                        <p style="color: #CBD5E0; margin-bottom: 2rem;">Start converting currencies to see analytics</p>
+                        <button class="btn btn-primary" onclick="window.location.href='converter.html'">
+                            <i class="fas fa-plus"></i> New Conversion
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Trend Chart (Last 7 Days)
+            const last7Days = getLast7DaysData(history);
+            trendChart = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: last7Days.labels,
+                    datasets: [{
+                        label: 'Conversions',
+                        data: last7Days.data,
+                        borderColor: '#00C853',
+                        backgroundColor: 'rgba(0, 200, 83, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#CBD5E0' } },
+                        y: { 
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
+                            ticks: { color: '#CBD5E0', stepSize: 1 },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Top Pairs
+            displayTopPairs(history);
+            
+            // Pie Chart (Currency Distribution)
+            const currencyData = getCurrencyDistribution(history);
+            pieChart = new Chart(document.getElementById('pieChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: currencyData.labels,
+                    datasets: [{
+                        data: currencyData.data,
+                        backgroundColor: [
+                            '#00C853', '#10B981', '#6EE7B7', '#FFD700', '#F4C430',
+                            '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#14B8A6'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#CBD5E0' }
+                        }
+                    }
+                }
+            });
+            
+            // Day of Week Chart
+            const dayData = getDayOfWeekData(history);
+            dayChart = new Chart(document.getElementById('dayChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Conversions',
+                        data: dayData,
+                        backgroundColor: '#00C853',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#CBD5E0' } },
+                        y: { 
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }, 
+                            ticks: { color: '#CBD5E0', stepSize: 1 },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function getLast7DaysData(history) {
+            const days = [];
+            const data = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                days.push(dateStr);
+                
+                const count = history.filter(h => {
+                    const hDate = new Date(h.timestamp);
+                    return hDate.toDateString() === date.toDateString();
+                }).length;
+                data.push(count);
+            }
+            
+            return { labels: days, data };
+        }
+        
+        function displayTopPairs(history) {
+            const pairs = {};
+            history.forEach(h => {
+                const pair = `${h.from}/${h.to}`;
+                pairs[pair] = (pairs[pair] || 0) + 1;
+            });
+            
+            const sorted = Object.entries(pairs)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            const container = document.getElementById('topPairs');
+            container.innerHTML = sorted.map(([pair, count]) => `
+                <div class="top-pair">
+                    <div class="pair-name">${pair}</div>
+                    <div class="pair-count">${count} conversion${count > 1 ? 's' : ''}</div>
+                </div>
+            `).join('') || '<p style="color: #CBD5E0;">No data available</p>';
+        }
+        
+        function getCurrencyDistribution(history) {
+            const currencies = {};
+            history.forEach(h => {
+                currencies[h.from] = (currencies[h.from] || 0) + 1;
+            });
+            
+            const sorted = Object.entries(currencies)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+            
+            return {
+                labels: sorted.map(([code]) => code),
+                data: sorted.map(([, count]) => count)
+            };
+        }
+        
+        function getDayOfWeekData(history) {
+            const days = [0, 0, 0, 0, 0, 0, 0]; // Mon-Sun
+            
+            history.forEach(h => {
+                const date = new Date(h.timestamp);
+                let day = date.getDay(); // 0=Sun, 6=Sat
+                day = day === 0 ? 6 : day - 1; // Convert to Mon=0, Sun=6
+                days[day]++;
+            });
+            
+            return days;
+        }
+        
+        initCharts();
+    </script>
+</body>
+</html>

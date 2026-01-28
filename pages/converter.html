@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Converter - RateVault</title>
+    <link rel="stylesheet" href="../css/global.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { padding: 0; margin: 0; display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: #1A1F35; padding: 2rem 0; position: fixed; height: 100vh; overflow-y: auto; }
+        .logo { padding: 0 2rem 2rem; font-size: 1.5rem; font-weight: 700; color: #00C853; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+        .nav-item { padding: 0.875rem 2rem; display: flex; align-items: center; gap: 1rem; color: #CBD5E0; text-decoration: none; transition: all 0.3s; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background: rgba(0, 200, 83, 0.1); color: #00C853; border-left: 3px solid #00C853; }
+        .main-content { margin-left: 260px; flex: 1; padding: 2rem; background: #0A0E1A; }
+        .converter-card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); padding: 2.5rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); max-width: 800px; margin: 0 auto; }
+        .amount-input { width: 100%; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 12px; color: white; font-size: 2rem; font-weight: 700; text-align: center; margin: 1.5rem 0; }
+        .amount-input:focus { outline: none; border-color: #00C853; box-shadow: 0 0 0 4px rgba(0, 200, 83, 0.1); }
+        .currency-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1.5rem; align-items: center; margin: 2rem 0; }
+        .currency-selector { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem; }
+        .currency-selector label { display: block; color: #CBD5E0; font-size: 0.875rem; margin-bottom: 0.5rem; }
+        .currency-selector select { width: 100%; padding: 1rem; background: #0A0E1A; border: 1px solid rgba(0, 200, 83, 0.3); border-radius: 8px; color: #00C853; font-size: 1.1rem; font-weight: 600; cursor: pointer; }
+        .currency-selector select option { background: #0A0E1A; color: #00C853; padding: 10px; }
+        .swap-btn { width: 60px; height: 60px; background: linear-gradient(135deg, #00C853, #10B981); border: none; border-radius: 50%; color: white; font-size: 1.5rem; cursor: pointer; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3); }
+        .swap-btn:hover { transform: rotate(180deg) scale(1.1); box-shadow: 0 6px 20px rgba(0, 200, 83, 0.5); }
+        .result-box { background: linear-gradient(135deg, rgba(0, 200, 83, 0.1), rgba(16, 185, 129, 0.1)); border: 2px solid rgba(0, 200, 83, 0.3); padding: 2rem; border-radius: 16px; text-align: center; margin: 2rem 0; }
+        .result-amount { font-size: 3rem; font-weight: 700; color: #00C853; margin-bottom: 0.5rem; }
+        .result-rate { color: #CBD5E0; font-size: 1rem; }
+        .convert-btn { width: 100%; padding: 1.25rem; background: linear-gradient(135deg, #00C853, #10B981); border: none; border-radius: 12px; color: white; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .convert-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4); }
+        .quick-amounts { display: flex; gap: 1rem; justify-content: center; margin: 1.5rem 0; flex-wrap: wrap; }
+        .quick-amount { padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: white; cursor: pointer; transition: all 0.3s; }
+        .quick-amount:hover { background: rgba(0, 200, 83, 0.2); border-color: #00C853; color: #00C853; }
+        @media (max-width: 768px) {
+            .sidebar { width: 0; transform: translateX(-100%); }
+            .main-content { margin-left: 0; }
+            .currency-row { grid-template-columns: 1fr; gap: 1rem; }
+            .swap-btn { transform: rotate(90deg); }
+        }
+    </style>
+</head>
+<body class="loaded">
+    <div class="sidebar">
+        <div class="logo" onclick="window.location.href='dashboard.html'">
+            <i class="fas fa-vault"></i>
+            RateVault
+        </div>
+        <nav>
+            <a class="nav-item" onclick="window.location.href='dashboard.html'">
+                <i class="fas fa-th-large"></i>
+                <span>Dashboard</span>
+            </a>
+            <a class="nav-item active">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Converter</span>
+            </a>
+            <a class="nav-item" onclick="window.location.href='analytics.html'">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </a>
+            <a class="nav-item" onclick="window.location.href='history.html'">
+                <i class="fas fa-history"></i>
+                <span>History</span>
+            </a>
+        </nav>
+        <div style="position: absolute; bottom: 2rem; width: 100%; padding: 0 2rem;">
+            <button class="btn btn-secondary" onclick="handleLogout()" style="width: 100%;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1 style="margin-bottom: 2rem;">Advanced Currency Converter</h1>
+        
+        <div class="converter-card">
+            <h2 style="text-align: center; margin-bottom: 1.5rem;">Convert Any Currency</h2>
+            
+            <div class="quick-amounts">
+                <button class="quick-amount" onclick="setAmount(10)">10</button>
+                <button class="quick-amount" onclick="setAmount(50)">50</button>
+                <button class="quick-amount" onclick="setAmount(100)">100</button>
+                <button class="quick-amount" onclick="setAmount(500)">500</button>
+                <button class="quick-amount" onclick="setAmount(1000)">1000</button>
+            </div>
+            
+            <input type="number" class="amount-input" id="amount" placeholder="Enter amount" value="100" min="0" step="0.01">
+            
+            <div class="currency-row">
+                <div class="currency-selector">
+                    <label>From</label>
+                    <select id="fromCurrency">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+                
+                <button class="swap-btn" onclick="swapCurrencies()">
+                    <i class="fas fa-exchange-alt"></i>
+                </button>
+                
+                <div class="currency-selector">
+                    <label>To</label>
+                    <select id="toCurrency">
+                        <option>Loading...</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="convert-btn" onclick="convertCurrency()">
+                <i class="fas fa-sync-alt"></i> Convert Now
+            </button>
+            
+            <div class="result-box" id="resultBox" style="display: none;">
+                <div class="result-amount" id="resultAmount">0.00 EUR</div>
+                <div class="result-rate" id="resultRate">1 USD = 0.92 EUR</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+        if (!Session.isAuthenticated()) {
+            window.location.href = '../index.html';
+        }
+        
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                Session.logout();
+            }
+        }
+        
+        async function loadCurrencies() {
+            try {
+                const currencies = await currencyAPI.getCurrencies();
+                const fromSelect = document.getElementById('fromCurrency');
+                const toSelect = document.getElementById('toCurrency');
+                
+                fromSelect.innerHTML = '';
+                toSelect.innerHTML = '';
+                
+                Object.entries(currencies).forEach(([code, data]) => {
+                    const name = data.name || code;
+                    fromSelect.add(new Option(`${code} - ${name}`, code));
+                    toSelect.add(new Option(`${code} - ${name}`, code));
+                });
+                
+                fromSelect.value = 'USD';
+                toSelect.value = 'EUR';
+            } catch (error) {
+                Toast.show('Failed to load currencies', 'error');
+            }
+        }
+        
+        function setAmount(value) {
+            document.getElementById('amount').value = value;
+        }
+        
+        function swapCurrencies() {
+            const from = document.getElementById('fromCurrency').value;
+            const to = document.getElementById('toCurrency').value;
+            document.getElementById('fromCurrency').value = to;
+            document.getElementById('toCurrency').value = from;
+        }
+        
+        async function convertCurrency() {
+            const amount = parseFloat(document.getElementById('amount').value);
+            const from = document.getElementById('fromCurrency').value;
+            const to = document.getElementById('toCurrency').value;
+            
+            if (!amount || amount <= 0) {
+                Toast.show('Please enter a valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const result = await currencyAPI.convert(amount, from, to);
+                
+                document.getElementById('resultBox').style.display = 'block';
+                document.getElementById('resultAmount').textContent = 
+                    `${currencyAPI.getCurrencySymbol(to)} ${result.result.toFixed(2)} ${to}`;
+                document.getElementById('resultRate').textContent = 
+                    `1 ${from} = ${result.rate.toFixed(4)} ${to}`;
+                
+                conversionHistory.add(result);
+                Toast.show('Conversion successful!', 'success');
+            } catch (error) {
+                Toast.show('Conversion failed: ' + error.message, 'error');
+            }
+        }
+        
+        loadCurrencies();
+        
+        // Check for repeat conversion
+        const repeat = localStorage.getItem('repeatConversion');
+        if (repeat) {
+            try {
+                const { from, to, amount } = JSON.parse(repeat);
+                setTimeout(() => {
+                    document.getElementById('fromCurrency').value = from;
+                    document.getElementById('toCurrency').value = to;
+                    document.getElementById('amount').value = amount;
+                    Toast.show('Conversion loaded from history', 'info');
+                }, 500);
+                localStorage.removeItem('repeatConversion');
+            } catch (e) {
+                console.error('Error loading repeat conversion:', e);
+            }
+        }
+    </script>
+</body>
+</html>
