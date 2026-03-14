@@ -146,6 +146,3 @@ AI-based trend predictions
 
 Currency alerts
 
-👨‍💻 Author
-
-Built by Niranjan H
